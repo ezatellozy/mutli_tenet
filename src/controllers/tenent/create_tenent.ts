@@ -2,8 +2,11 @@ import { Request, Response } from "express";
 import sequelize from "../../../utils/database";
 import { ResponseHandler } from "../../../utils/responseHandler";
 import { AppError } from "../../middleware/errorHandler";
-import { Tenent } from "../../models/tenant";
+import Tenant from "../../models/tenant";
 import { Op } from "sequelize";
+import { generateTenantIdentifiers } from "../../../utils/tenantNameUtils";
+import Domain from "../../models/domain";
+import { provisionMyTenant } from "../../services/provisionMySQL";
 
 type Content = {
   title: string;
@@ -17,68 +20,88 @@ interface TranslatedContent extends Content {
   locale: string;
 }
 
-export const createTenent = async (
+export function dbNameFromTenant(tenantKey: string) {
+  return `t_${tenantKey.toLowerCase().replace(/[^a-z0-9_]/g, "_")}`;
+}
+
+export const createTenant = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const { name, password, email, phone, image } = req.body;
-
-  const errors: string[] = [];
-
-  if (errors.length) {
-    ResponseHandler.error(res, "Validation errors", 422, errors);
-    return;
-  }
+  const {
+    name,
+    password,
+    email,
+    phone,
+    image,
+    company_name,
+    preferred_subdomain,
+  } = req.body;
 
   try {
     const transaction = await sequelize.transaction();
-    // let page: Page;
-    // try {
-    //     const currentPage = await Page.findOne({
-    //         where: { type },
-    //         order: [["id", "DESC"]],
-    //     });
 
-    //     if (currentPage) {
-    //         page = currentPage;
-    //         if (video) {
+    try {
+      const { tenantKey, subdomainLabel, dbName } =
+        await generateTenantIdentifiers({
+          companyName: company_name,
+          preferredSubdomain: preferred_subdomain,
+          checkTenantKeyExists: async (k) =>
+            !!(await Tenant.findOne({ where: { tenant_key: k } })),
+          checkSubdomainExists: async (label) =>
+            !!(await Domain.findOne({
+              where: { host: `${label}.yourdomain.com` },
+            })),
+        });
 
-    //             await page.update({ video }, { transaction });
-    //         }
-    //     } else {
-    //         if (!video && type === "middle_intro") {
-    //             ResponseHandler.error(res, "video is required", 422);
-    //             return;
-    //         }
-    //         page = await Page.create({ video, type } as Page, { transaction });
-    //     }
+      const tenant = await Tenant.create({
+        company_name,
+        name,
+        password,
 
-    //     await upsertTranslations(page.id, { ar }, transaction, type);
-    //     await upsertTranslations(page.id, { en }, transaction, type);
+        email,
+        phone,
+        image,
+        tenant_key: tenantKey,
+        dbName,
+        subdomain: `${subdomainLabel}.yourdomain.com`,
+        preferred_subdomain,
+      });
 
-    //     await transaction.commit();
-    // } catch (err) {
-    //     await transaction.rollback();
+      const { tenantDbUrl } = await provisionMyTenant({
+        tenantKey,
+        dbName,
+      });
 
-    //     if (err instanceof Error) {
+      await Domain.create({
+        tenant_id: tenant.id,
+        host: `${subdomainLabel}.yourdomain.com`,
+        type: "managed_subdomain",
+        verified: true,
+      });
 
-    //         ResponseHandler.error(
-    //             res,
-    //             err.message ?? "Failed to create page",
-    //             500,
-    //             []
-    //         );
-    //     } else {
-    //         ResponseHandler.error(
-    //             res,
-    //             "Failed to create page",
-    //             500,
-    //             []
-    //         );
-    //     }
+      tenant.db_url = tenantDbUrl;
+      await tenant.save();
 
-    //     return;
-    // }
+      ResponseHandler.success(res, tenant);
+
+      await transaction.commit();
+    } catch (err) {
+      await transaction.rollback();
+
+      if (err instanceof Error) {
+        ResponseHandler.error(
+          res,
+          err.message ?? "Failed to create page",
+          500,
+          []
+        );
+      } else {
+        ResponseHandler.error(res, "Failed to create page", 500, []);
+      }
+
+      return;
+    }
 
     // const translateData = await PageTranslations.findAll({
     //     where: {
@@ -119,90 +142,37 @@ export const createTenent = async (
   }
 };
 
-// export const getHomeIntro = async (req: Request, res: Response): Promise<void> => {
-//     const { type } = req.query as { type: string }
+export const getAllTenants = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const tenants = await Tenant.findAll({
+      // attributes: ["image", "name", "email", "is_active"],
+    });
 
-//     if (!type) {
-//         ResponseHandler.error(res, 'type is requred', 422)
-//         return
-//     }
-//     const allowedTypes = ["top_intro", "middle_intro"];
+    // const imageUrl = resPage.image
+    //     ? `${req.protocol}://${req.get(
+    //         "host"
+    //     )}/images/pages/${resPage.image.replace(/\\/g, "/")}`
+    //     : null;
+    // const videoUrl = resPage.video
+    //     ? `${req.protocol}://${req.get(
+    //         "host"
+    //     )}/files/pages/${resPage.video.replace(/\\/g, "/")}`
+    //     : null;
 
-//     if (!allowedTypes.includes(type)) {
-//         ResponseHandler.error(res, "Type is not supported", 422, []);
-//         return;
-//     }
-
-//     try {
-
-//         const home_page = await Page.findOne({
-//             where: {
-//                 type: type
-//             },
-//             include: [
-//                 {
-//                     model: PageTranslations,
-
-//                     required: false,
-//                     attributes: ["locale", "title", "content", "name", "button_name"]
-//                 }
-//             ],
-//             attributes: ["image", "type", "video"]
-//         })
-
-//         if (!home_page) {
-
-//             ResponseHandler.success(res, null)
-//             return
-//         }
-
-//         let translateData = []
-
-//         if (home_page.PageTranslations.length > 0) {
-//             translateData = home_page.PageTranslations.map((t: any) => t.get())
-//         }
-
-//         const translation = translateData.reduce((acc, t) => {
-
-//             const { locale, ...rest } = t
-//             acc[locale] = rest
-
-//             return acc;
-//         }, {} as Record<string, (typeof home_page.PageTranslations)[number]>) || {
-//             ar: null,
-//             en: null,
-
-//         };
-
-//         const resPage = home_page.get();
-//         const imageUrl = resPage.image
-//             ? `${req.protocol}://${req.get(
-//                 "host"
-//             )}/images/pages/${resPage.image.replace(/\\/g, "/")}`
-//             : null;
-//         const videoUrl = resPage.video
-//             ? `${req.protocol}://${req.get(
-//                 "host"
-//             )}/files/pages/${resPage.video.replace(/\\/g, "/")}`
-//             : null;
-
-//         const response = {
-
-//             video: videoUrl,
-//             image: imageUrl,
-//             type: resPage.type,
-
-//             ...translation,
-//         };
-//         ResponseHandler.success(res, response);
-
-//     } catch (error) {
-//         if (error instanceof Error) {
-
-//             ResponseHandler.error(res, error?.message || "Failed to fetch pages", 500, []);
-//         } else {
-//             ResponseHandler.error(res, "Failed to fetch pages", 500, []);
-
-//         }
-//     }
-// }
+    ResponseHandler.success(res, tenants);
+  } catch (error) {
+    if (error instanceof Error) {
+      ResponseHandler.error(
+        res,
+        error?.message || "Failed to fetch pages",
+        500,
+        []
+      );
+    } else {
+      ResponseHandler.error(res, "Failed to fetch pages", 500, []);
+    }
+  }
+};

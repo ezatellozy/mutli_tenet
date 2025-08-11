@@ -3,6 +3,7 @@ import webRoutes from "./routes/web/index";
 import adminRoutes from "./routes/admin/index";
 import generalRoutes from "./routes/general";
 import AdminAuthRoutes from "./routes/auth/admin";
+import tenentRoutes from "./routes/tenent";
 import { authenticateToken } from "./src/middleware/jwtMiddleware";
 import helmet from "helmet";
 import compression from "compression";
@@ -74,6 +75,7 @@ const apiRouter: Router = express.Router();
 
 apiRouter.use("/web", webRoutes);
 apiRouter.use("/admin/auth", multer().any(), AdminAuthRoutes);
+apiRouter.use("/tenent", multer().any(), tenentRoutes);
 
 apiRouter.use("/admin", multer().none(), authenticateToken, adminRoutes);
 apiRouter.use("/general", generalRoutes);
@@ -81,11 +83,11 @@ apiRouter.use("/general", generalRoutes);
 app.use("/api", apiRouter);
 
 app.use(errorHandler);
-// applyAssociations()
+// applyAssociations();
 
 sequelize
   .sync({
-    force: true, // Set true to drop table and create new one each time.
+    // force: true, // Set true to drop table and create new one each time.
     // logging: false, // Set to true to log all SQL queries.
   })
   .then((res) => {

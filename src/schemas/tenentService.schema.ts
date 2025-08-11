@@ -2,11 +2,12 @@ import Joi from "joi";
 
 export const createTenentServiceSchema = Joi.object({
   body: Joi.object({
-    color: Joi.string().required(),
+    preferred_subdomain: Joi.string().optional(),
     name: Joi.string().required(),
     password: Joi.string().required(),
     email: Joi.string().email().required(),
     phone: Joi.string().required(),
+    company_name: Joi.string().required(),
     image: Joi.string().optional(),
   }),
 });

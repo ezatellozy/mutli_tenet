@@ -1,9 +1,11 @@
-import { DataTypes, HasManyGetAssociationsMixin, Model, Optional } from "sequelize";
-import sequelize from "../../../utils/database";
 import {
-  BlogSection,
-  BlogSectionsTranslate
-} from "./sections"
+  DataTypes,
+  HasManyGetAssociationsMixin,
+  Model,
+  Optional,
+  Sequelize,
+  ModelStatic,
+} from "sequelize";
 
 // Define Blog attributes
 interface BlogAttributes {
@@ -11,64 +13,14 @@ interface BlogAttributes {
   image: string;
   date: Date | null;
   updated_at?: Date;
-  type: string
+  type: string;
   by: string;
   is_published: boolean;
-  blog_translations?: BlogTranslateAttributes[]
+  blog_translations?: BlogTranslateAttributes[];
 }
 
-interface BlogCreationAttributes extends Optional<BlogAttributes, "id" | "is_published"> { }
-
-// Blog model
-class Blog extends Model<BlogAttributes, BlogCreationAttributes> implements BlogAttributes {
-  declare id: number;
-  declare image: string;
-  declare type: string;
-  declare date: Date;
-  declare is_published: boolean;
-  declare by: string;
-  declare readonly created_at: Date;
-  declare readonly updated_at: Date;
-
-  declare blogs_translations: BlogTranslate[]; // Add BlogTranslate association
-  declare get_blogs_translations: HasManyGetAssociationsMixin<BlogTranslate>; // Sequelize mixin for associations
-
-}
-
-Blog.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true,
-    },
-    image: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    by: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    type: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    date: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
-    is_published: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-  },
-  {
-    sequelize,
-    underscored: true,
-    modelName: "blog",
-  }
-);
+interface BlogCreationAttributes
+  extends Optional<BlogAttributes, "id" | "is_published"> {}
 
 // Define BlogTranslate attributes
 interface BlogTranslateAttributes {
@@ -82,81 +34,161 @@ interface BlogTranslateAttributes {
   type: string;
 }
 
-interface BlogTranslateCreationAttributes extends Optional<BlogTranslateAttributes, "id"> { }
+interface BlogTranslateCreationAttributes
+  extends Optional<BlogTranslateAttributes, "id"> {}
 
-class BlogTranslate
-  extends Model<BlogTranslateAttributes, BlogTranslateCreationAttributes>
-  implements BlogTranslateAttributes {
-  declare id: number;
-  declare blog_id: number;
-  declare locale: string;
-  declare title: string;
-  declare desc: string;
-  declare short_desc: string;
-  declare slug: string;
-  declare type: string;
+export function registerBlogModels(sequelize: Sequelize) {
+  // Blog model
+  class Blog
+    extends Model<BlogAttributes, BlogCreationAttributes>
+    implements BlogAttributes
+  {
+    declare id: number;
+    declare image: string;
+    declare type: string;
+    declare date: Date;
+    declare is_published: boolean;
+    declare by: string;
+    declare readonly created_at: Date;
+    declare readonly updated_at: Date;
 
-  declare readonly created_at: Date;
-  declare readonly updated_at: Date;
+    declare blogs_translations: BlogTranslate[]; // Add BlogTranslate association
+    declare get_blogs_translations: HasManyGetAssociationsMixin<BlogTranslate>; // Sequelize mixin for associations
+  }
+
+  Blog.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      image: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      by: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      type: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      date: {
+        type: DataTypes.DATE,
+        allowNull: false,
+      },
+      is_published: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+      },
+    },
+    {
+      sequelize,
+      underscored: true,
+      modelName: "blog",
+    }
+  );
+
+  class BlogTranslate
+    extends Model<BlogTranslateAttributes, BlogTranslateCreationAttributes>
+    implements BlogTranslateAttributes
+  {
+    declare id: number;
+    declare blog_id: number;
+    declare locale: string;
+    declare title: string;
+    declare desc: string;
+    declare short_desc: string;
+    declare slug: string;
+    declare type: string;
+
+    declare readonly created_at: Date;
+    declare readonly updated_at: Date;
+  }
+
+  BlogTranslate.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      blog_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+      slug: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+      },
+      locale: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      type: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      title: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      desc: {
+        type: DataTypes.TEXT,
+        allowNull: false,
+      },
+      short_desc: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+    },
+    {
+      sequelize,
+      underscored: true,
+      modelName: "blogs_translations",
+    }
+  );
+
+  return { Blog, BlogTranslate };
 }
 
-BlogTranslate.init(
-  {
+// export const blogsAssociations = () => {
+//   // Relationships
+//   BlogTranslate.belongsTo(Blog, { foreignKey: "blog_id", onDelete: "CASCADE" });
+//   Blog.hasMany(BlogTranslate, { foreignKey: "blog_id", onDelete: "CASCADE" });
+//   BlogSectionsTranslate.belongsTo(BlogSection, {
+//     foreignKey: "section_id",
+//     onDelete: "CASCADE",
+//   });
+//   BlogSection.hasMany(BlogSectionsTranslate, {
+//     foreignKey: "section_id",
+//     onDelete: "CASCADE",
+//   });
+//   Blog.hasMany(BlogSection, { foreignKey: "blog_id", onDelete: "CASCADE" });
+//   BlogSection.belongsTo(Blog, { foreignKey: "blog_id", onDelete: "CASCADE" });
+// };
 
-    id: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true,
-    },
-    blog_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    slug: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
+export const blogsAssociations = (models: any) => {
+  const { Blog, BlogTranslate, BlogSection, BlogSectionsTranslate } = models;
 
-    },
-    locale: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    type: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    title: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    desc: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    short_desc: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-  },
-  {
-    sequelize,
-    underscored: true,
-    modelName: "blogs_translations",
-  }
-);
-
-
-export const blogsAssociations = () => {
-  // Relationships
+  // Blog ↔ BlogTranslate
   BlogTranslate.belongsTo(Blog, { foreignKey: "blog_id", onDelete: "CASCADE" });
   Blog.hasMany(BlogTranslate, { foreignKey: "blog_id", onDelete: "CASCADE" });
-  BlogSectionsTranslate.belongsTo(BlogSection, { foreignKey: "section_id", onDelete: "CASCADE" });
-  BlogSection.hasMany(BlogSectionsTranslate, { foreignKey: "section_id", onDelete: "CASCADE" });
+
+  // BlogSection ↔ BlogSectionsTranslate
+  BlogSectionsTranslate.belongsTo(BlogSection, {
+    foreignKey: "section_id",
+    onDelete: "CASCADE",
+  });
+  BlogSection.hasMany(BlogSectionsTranslate, {
+    foreignKey: "section_id",
+    onDelete: "CASCADE",
+  });
+
+  // Blog ↔ BlogSection
   Blog.hasMany(BlogSection, { foreignKey: "blog_id", onDelete: "CASCADE" });
   BlogSection.belongsTo(Blog, { foreignKey: "blog_id", onDelete: "CASCADE" });
-
-}
-
-
-export { Blog, BlogTranslate };
+};
