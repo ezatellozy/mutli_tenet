@@ -1,0 +1,44 @@
+{
+  "name": "venus-website",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.ts",
+  "scripts": {
+    "start": "NODE_ENV=production node .output/app.js",
+    "dev": "nodemon  app.ts",
+    "build": "tsc && cpx package.json .output/ && cpx seeders/**/* .output/seeders/  && cpx migrations/**/* .output/migrations/ && cpx config/**/* .output/config/"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/compression": "^1.7.5",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.8",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.13.5",
+    "bcrypt": "^5.1.1",
+    "body-parser": "^1.20.3",
+    "compression": "^1.8.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-validator": "^7.2.1",
+    "helmet": "^8.0.0",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "mariadb": "^3.4.0",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.12.0",
+    "nodemon": "^3.1.9",
+    "save": "^2.9.0",
+    "sequelize": "^6.37.5",
+    "tsconfig-paths": "^4.2.0"
+  },
+  "devDependencies": {
+    "cpx": "^1.5.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  }
+}

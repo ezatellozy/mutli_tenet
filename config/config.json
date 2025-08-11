@@ -1,0 +1,23 @@
+{
+  "development": {
+    "username": "root",
+    "password": null,
+    "database": "najid-alqm",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  },
+  "test": {
+    "username": "root",
+    "password": null,
+    "database": "database_test",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  },
+  "production": {
+    "username": "najidalqimam_najid",
+    "password": "IQZ;6$mRjjYc",
+    "database": "najidalqimam_najid",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  }
+}
