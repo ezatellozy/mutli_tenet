@@ -35,7 +35,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       where: { email },
     });
     if (!user) {
-      ResponseHandler.error(res, "User not found", 422);
+      ResponseHandler.error(res, "Invalid email or password", 422);
       return;
     }
     if (!(await checkPassword(password, user.password))) {
@@ -43,7 +43,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const userToken = await token({ user });
+    const userToken = await token(user);
     const userData = user.get();
 
     const imageUrl = userData.image

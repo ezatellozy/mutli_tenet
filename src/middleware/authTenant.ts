@@ -1,56 +1,102 @@
 // src/middlewares/authTenant.ts
 import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import jwt, { JwtPayload as BaseJwtPayload } from "jsonwebtoken";
+
+import "dotenv/config";
 import Tenant from "../models/tenant";
 import Domain from "../models/domain";
-import { getTenantSequelize } from "../../utils/tenantDb";
+import { getTenantContext } from "../../utils/tenantDb";
+import { Sequelize } from "sequelize";
+
+interface JwtPayload extends BaseJwtPayload {
+  tid: number; // tenant id
+  sub: string; // user email (اختياري حسب إصدارك للتوكن)
+}
+
+export interface UserToRequest extends Request {
+  db?: Sequelize;
+  models?: any; //TenantModels
+  tenant?: {
+    id: number;
+    tenant_key: string;
+    db_url: string;
+    email: string | null;
+    isActive: boolean;
+  };
+  user?: {
+    email: string;
+    tenantId: number;
+    role?: string;
+    uid?: number;
+  };
+}
 
 export async function authTenant(
-  req: Request,
+  req: UserToRequest,
   res: Response,
   next: NextFunction
-) {
+): Promise<void> {
   try {
     const hdr = req.headers.authorization || "";
     const token = hdr.startsWith("Bearer ") ? hdr.slice(7) : "";
-    if (!token) return res.status(401).json({ error: "Missing token" });
+    if (!token) {
+      res.status(401).json({ error: "Missing token" });
+      return;
+    }
 
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    let payload: JwtPayload;
+    try {
+      payload = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
+    } catch (e: unknown) {
+      res.status(401).json({ error: "Invalid token" });
+      return;
+    }
 
-    // هات التينانت من الـ Registry
+    // 1) احضر التينانت من الريجيستري
     const tenant = await Tenant.findByPk(payload.tid);
     if (!tenant || !tenant.isActive) {
-      return res.status(403).json({ error: "Tenant not found or inactive" });
+      res.status(403).json({ error: "Tenant not found or inactive" });
+      return;
+    }
+    if (!tenant.db_url) {
+      res.status(503).json({ error: "Tenant not provisioned" });
+      return;
     }
 
-    // (اختياري قوي) تأكيد الـ Host الحالي مسجل ضمن domains للتينانت ده
+    // 2) (اختياري) تأكيد أن الـ Host الحالي مربوط بالتينانت
     const host = (req.headers.host || "").split(":")[0].toLowerCase();
-    const domain = await Domain.findOne({
-      where: { tenant_id: tenant.id, host },
-    });
-    if (!domain) {
-      // ممكن تخليها تحذير أو سياسة صارمة حسب احتياجك
-      // return res.status(403).json({ error: "Domain not mapped to tenant" });
+    if (host) {
+      const domain = await Domain.findOne({
+        where: { tenant_id: tenant.id, host, verified: true },
+      });
+      if (!domain) {
+        // لو عايز تشددها فعّل السطر التالي
+        // return res.status(403).json({ error: "Domain not mapped to tenant" });
+      }
     }
 
-    // ابن اتصال لقاعدة التينانت
+    // 3) جهّز اتصال وموديلات التينانت على نفس الـ instance
+    const { sequelize, models } = getTenantContext(tenant.db_url);
+
+    // 4) احقن الكونتكست في الطلب
     req.tenant = {
       id: tenant.id,
-      key: tenant.tenant_key,
+      tenant_key: tenant.tenant_key,
+      db_url: tenant.db_url,
       email: tenant.email,
-      db_url: tenant.db_url, // مخزّنة عندك بعد الـ provision
+      isActive: tenant.isActive,
     };
-
-    req.db = getTenantSequelize(tenant.db_url); // Sequelize instance للتينانت
-
-    // (اختياري) مرّر بيانات المستخدم من الـ token
+    req.db = sequelize;
+    req.models = models;
     req.user = { email: payload.sub, tenantId: tenant.id };
 
     return next();
   } catch (e: any) {
-    if (e.name === "TokenExpiredError") {
-      return res.status(401).json({ error: "Token expired" });
+    if (e?.name === "TokenExpiredError") {
+      res.status(401).json({ error: "Token expired" });
+      return;
     }
-    return res.status(401).json({ error: "Invalid token" });
+    res.status(401).json({ error: "Unauthorized" });
+    return;
   }
 }

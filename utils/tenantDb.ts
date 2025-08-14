@@ -1,6 +1,7 @@
 import { Sequelize } from "sequelize";
-import { initTenantModels } from "../src/models/initsBlogsModels";
-// import { initTenantModels } from "../tenants/models/initTenantModels";
+import { initTenantModels } from "../src/models/initTenantModels";
+// import { initTenantModels } from "../src/models/initsBlogsMoظdels";
+
 // import { TenantModels } from "../tenants/models/types";
 
 export interface TenantEntry {

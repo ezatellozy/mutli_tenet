@@ -87,7 +87,7 @@ app.use(errorHandler);
 
 sequelize
   .sync({
-    // force: true, // Set true to drop table and create new one each time.
+    force: true, // Set true to drop table and create new one each time.
     // logging: false, // Set to true to log all SQL queries.
   })
   .then((res) => {
