@@ -52,6 +52,8 @@ export async function authTenant(
       return;
     }
 
+    console.log(payload);
+
     // 1) احضر التينانت من الريجيستري
     const tenant = await Tenant.findByPk(payload.tid);
     if (!tenant || !tenant.isActive) {
@@ -66,17 +68,32 @@ export async function authTenant(
     // 2) (اختياري) تأكيد أن الـ Host الحالي مربوط بالتينانت
     const host = (req.headers.host || "").split(":")[0].toLowerCase();
     if (host) {
+      console.log(tenant);
       const domain = await Domain.findOne({
-        where: { tenant_id: tenant.id, host, verified: true },
+        where: { tenant_id: tenant.id },
       });
       if (!domain) {
         // لو عايز تشددها فعّل السطر التالي
-        // return res.status(403).json({ error: "Domain not mapped to tenant" });
+        res.status(403).json({ error: "Domain not mapped to tenant" });
+        return;
       }
+      console.log("sad00");
     }
 
     // 3) جهّز اتصال وموديلات التينانت على نفس الـ instance
+    console.log("sad");
     const { sequelize, models } = getTenantContext(tenant.db_url);
+    console.log("sad1");
+
+    try {
+      await sequelize.authenticate(); // سريع وخفيف
+      console.log("tenant DB OK");
+    } catch (err) {
+      console.error("tenant DB error", err);
+      res.status(503).json({ error: "Tenant DB unavailable" });
+      return;
+    }
+    console.log("sad2");
 
     // 4) احقن الكونتكست في الطلب
     req.tenant = {

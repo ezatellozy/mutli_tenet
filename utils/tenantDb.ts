@@ -41,30 +41,64 @@ export function getTenantContext(dbUrl: string): {
   sequelize: Sequelize;
   models: any;
 } {
+  const now = new Date().toISOString();
+  const shortUrl = dbUrl.replace(/(\/\/.*:)(.*)(@)/, "$1****$3"); // إخفاء الباسورد
+  console.log(`[${now}] getTenantContext: start for ${shortUrl}`);
+
   const entry = tenantPools.get(dbUrl);
 
   if (entry) {
+    console.log(`[${now}] getTenantContext: cache HIT`);
     entry.lastUsedAt = Date.now();
+
     if (entry.models) {
+      console.log(`[${now}] getTenantContext: cache has models -> return`);
       return { sequelize: entry.sequelize, models: entry.models };
     }
-    // لو الاتصال موجود بس الموديلات لسه متعملتش
-    const models = initTenantModels(entry.sequelize);
-    entry.models = models;
-    return { sequelize: entry.sequelize, models };
+
+    console.log(
+      `[${now}] getTenantContext: cache has sequelize only -> init models...`
+    );
+    try {
+      const models = initTenantModels(entry.sequelize);
+      entry.models = models;
+      console.log(
+        `[${now}] getTenantContext: models initialized from cache -> return`
+      );
+      return { sequelize: entry.sequelize, models };
+    } catch (e: any) {
+      console.error(
+        `[${now}] getTenantContext: initTenantModels(cache) failed:`,
+        e?.message
+      );
+      throw e;
+    }
   }
 
-  // لا يوجد اتصال مخزّن: أنشئ اتصال، خزّنه، ثم هيّئ الموديلات
+  console.log(`[${now}] getTenantContext: cache MISS -> creating sequelize...`);
   const sequelize = new Sequelize(dbUrl, {
     dialect: "mysql",
     logging: false,
-    pool: { max: 5, min: 0, acquire: 30_000, idle: 10_000 },
+    pool: { max: 5, min: 0, acquire: 10_000, idle: 10_000 },
+    retry: { max: 0 },
+    dialectOptions: { connectTimeout: 10_000 },
   });
+  console.log(`[${now}] getTenantContext: sequelize created, init models...`);
 
-  const models = initTenantModels(sequelize);
-  tenantPools.set(dbUrl, { sequelize, models, lastUsedAt: Date.now() });
-
-  return { sequelize, models };
+  try {
+    const models = initTenantModels(sequelize);
+    tenantPools.set(dbUrl, { sequelize, models, lastUsedAt: Date.now() });
+    console.log(
+      `[${now}] getTenantContext: models initialized, cached -> return`
+    );
+    return { sequelize, models };
+  } catch (e: any) {
+    console.error(
+      `[${now}] getTenantContext: initTenantModels(new) failed:`,
+      e?.message
+    );
+    throw e;
+  }
 }
 
 /** (اختياري) إغلاق اتصال تينانت معيّن */

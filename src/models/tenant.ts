@@ -102,22 +102,32 @@ Tenant.init(
   }
 );
 
-Tenant.addHook("beforeCreate", async (tenant: Tenant) => {
-  if (tenant.password) {
-    tenant.password = await bcrypt.hash(tenant.password, 10);
-  }
+// Tenant.addHook("beforeCreate", async (tenant: Tenant) => {
+//   console.log(tenant);
 
-  // if (!tenant.tenant_key) {
-  //   // Prefer provided preferred_subdomain, else company_name
-  //   const base = tenant.preferred_subdomain || slugifyCompanyName(tenant.company_name);
-  //   tenant.tenant_key = safeTenantKey(base);
-  // }
-  // if (!tenant.dbName) {
-  //   tenant.dbName = dbNameFromTenantKey(tenant.tenant_key);
-  // }
-  // if (!tenant.subdomain) {
-  //   tenant.subdomain = `${tenant.tenant_key}.yourdomain.com`;
-  // }
+//   if (tenant.password) {
+//     tenant.password = await bcrypt.hash(tenant.password, 10);
+//   }
+
+//   // if (!tenant.tenant_key) {
+//   //   // Prefer provided preferred_subdomain, else company_name
+//   //   const base = tenant.preferred_subdomain || slugifyCompanyName(tenant.company_name);
+//   //   tenant.tenant_key = safeTenantKey(base);
+//   // }
+//   // if (!tenant.dbName) {
+//   //   tenant.dbName = dbNameFromTenantKey(tenant.tenant_key);
+//   // }
+//   // if (!tenant.subdomain) {
+//   //   tenant.subdomain = `${tenant.tenant_key}.yourdomain.com`;
+//   // }
+// });
+
+Tenant.addHook("beforeCreate", async (user: Tenant) => {
+  console.log(user);
+
+  if (user.password) {
+    user.password = await bcrypt.hash(user.password, 10);
+  }
 });
 
 export const tenantAssociations = () => {

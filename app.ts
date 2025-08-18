@@ -93,7 +93,7 @@ sequelize
   .then((res) => {
     app.listen({
       port: PORT,
-      host: "0.0.0.0",
+      host: "localhost",
       env: process.env.NODE_ENV || "development",
     });
   })

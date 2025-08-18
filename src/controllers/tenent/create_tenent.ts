@@ -50,7 +50,7 @@ export const createTenant = async (
             !!(await Tenant.findOne({ where: { tenant_key: k } })),
           checkSubdomainExists: async (label) =>
             !!(await Domain.findOne({
-              where: { host: `${label}.yourdomain.com` },
+              where: { host: `${label}.localhost:3001` },
             })),
         });
 
@@ -64,7 +64,7 @@ export const createTenant = async (
         image,
         tenant_key: tenantKey,
         dbName,
-        subdomain: `${subdomainLabel}.yourdomain.com`,
+        subdomain: `${subdomainLabel}.localhost:3001`,
         preferred_subdomain,
       });
 
@@ -75,7 +75,7 @@ export const createTenant = async (
 
       await Domain.create({
         tenant_id: tenant.id,
-        host: `${subdomainLabel}.yourdomain.com`,
+        host: `${subdomainLabel}.localhost:3001`,
         type: "managed_subdomain",
         verified: true,
       });

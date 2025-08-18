@@ -38,19 +38,21 @@ export type ProvisionResult = {
 export async function provisionMyTenant(params: {
   tenantKey: string;
   dbName?: string;
-  host?: string; // أين سيُسمح للـ user بالاتصال (يفضّل 127.0.0.1)
+  host?: string; // أين سيُسمح للـ user بالاتصال (يفضّل localhost)
   port?: number; // منفذ MySQL
 }): Promise<ProvisionResult> {
-  const host = params.host ?? process.env.DB_HOST ?? "127.0.0.1";
+  const host = params.host ?? process.env.DB_HOST ?? "localhost";
   const port = Number(params.port ?? process.env.DB_PORT ?? 3306);
 
   const dbName = params.dbName ?? dbNameFromTenantKey(params.tenantKey);
+
   assertSafeIdentifier(dbName, "db");
 
   const dbUser = userFromDb(dbName);
   assertSafeIdentifier(dbUser, "user");
 
   const dbPass = generateStrongPassword();
+  // const dbPass = generateStrongPassword();
 
   // 1) إنشاء القاعدة (idempotent)
   await myAdmin.query(
@@ -71,15 +73,23 @@ export async function provisionMyTenant(params: {
   )}:${encodeURIComponent(dbPass)}@${host}:${port}/${dbName}`;
 
   // 3) تشغيل المهاجرات/البذور داخل قاعدة التينانت
-  const tenantSequelize = new Sequelize(tenantDbUrl, {
-    dialect: "mysql",
-    logging: false,
-  });
-  try {
-    await runMigrationsMySQL(tenantSequelize);
-  } finally {
-    await tenantSequelize.close();
-  }
+  // const tenantSequelize = new Sequelize(tenantDbUrl, {
+  //   dialect: "mysql",
+  //   logging: false,
+  // });
+
+  // try {
+  //   await runMigrationsMySQL(tenantSequelize);
+  // } catch (err) {
+  //   console.error("Migration failed:", err);
+  // } finally {
+  //   try {
+  //     console.log("Closing Sequelize connection…");
+  //     await tenantSequelize.close();
+  //   } catch (closeErr) {
+  //     console.error("Error while closing connection:", closeErr);
+  //   }
+  // }
 
   return { dbName, dbUser, dbPass, tenantDbUrl };
 }
@@ -118,7 +128,7 @@ export async function dropMyTenant(params: {
   tenantDbName: string;
   host?: string;
 }) {
-  const host = params.host ?? process.env.DB_HOST ?? "127.0.0.1";
+  const host = params.host ?? process.env.DB_HOST ?? "localhost";
   const dbName = params.tenantDbName;
   assertSafeIdentifier(dbName, "db");
   const dbUser = userFromDb(dbName);
