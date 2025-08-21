@@ -81,9 +81,8 @@ export async function authTenant(
     }
 
     // 3) جهّز اتصال وموديلات التينانت على نفس الـ instance
-    console.log("sad");
+
     const { sequelize, models } = getTenantContext(tenant.db_url);
-    console.log("sad1");
 
     try {
       await sequelize.authenticate(); // سريع وخفيف
@@ -93,7 +92,6 @@ export async function authTenant(
       res.status(503).json({ error: "Tenant DB unavailable" });
       return;
     }
-    console.log("sad2");
 
     // 4) احقن الكونتكست في الطلب
     req.tenant = {
@@ -106,7 +104,7 @@ export async function authTenant(
     req.db = sequelize;
     req.models = models;
     req.user = { email: payload.sub, tenantId: tenant.id };
-
+    console.log("sad2");
     return next();
   } catch (e: any) {
     if (e?.name === "TokenExpiredError") {

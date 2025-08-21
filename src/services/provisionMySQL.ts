@@ -1,5 +1,5 @@
 // src/services/provisionMySQL.ts
-import { Sequelize } from "sequelize";
+import { QueryTypes, Sequelize } from "sequelize";
 import { dbNameFromTenantKey } from "../../utils/tenantNameUtils";
 import { myAdmin } from "../../utils/database";
 
@@ -20,7 +20,6 @@ function assertSafeIdentifier(id: string, kind: "db" | "user" = "db") {
 }
 
 function userFromDb(dbName: string) {
-  // حد أسماء مستخدمي MySQL عادةً 32–128 حسب الإصدار—نخليه آمنًا
   const u = `u_${dbName}`.slice(0, 32);
   return u;
 }
@@ -49,6 +48,7 @@ export async function provisionMyTenant(params: {
   assertSafeIdentifier(dbName, "db");
 
   const dbUser = userFromDb(dbName);
+
   assertSafeIdentifier(dbUser, "user");
 
   const dbPass = generateStrongPassword();
@@ -60,9 +60,15 @@ export async function provisionMyTenant(params: {
   );
 
   // 2) إنشاء المستخدم ومنحه الصلاحيات (مقيّد على host المحدد)
-  await myAdmin.query(
-    `CREATE USER IF NOT EXISTS '${dbUser}'@'${host}' IDENTIFIED BY '${dbPass}';`
-  );
+  // await myAdmin.query(
+  //   `CREATE USER IF NOT EXISTS '${dbUser}'@'${host}' IDENTIFIED BY '${dbPass}';`
+  // );
+
+  await myAdmin.query("CREATE OR REPLACE USER ?@? IDENTIFIED BY ?", {
+    replacements: [dbUser, host, dbPass],
+    type: QueryTypes.RAW,
+  });
+
   await myAdmin.query(
     `GRANT ALL PRIVILEGES ON \`${dbName}\`.* TO '${dbUser}'@'${host}';`
   );
